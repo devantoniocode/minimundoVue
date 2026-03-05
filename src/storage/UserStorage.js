@@ -1,0 +1,89 @@
+import {defineStore} from "pinia";
+
+export const userStorage = defineStore("user", {
+    state: () => ({
+        user: localStorage.getItem("user") === null ? null : JSON.parse(localStorage.getItem("user")),
+        token: localStorage.getItem("token") === null ? null : localStorage.getItem("token"),
+    }),
+
+    actions: {
+        setUserLogged(user) {
+            user.logged = new Date();
+            localStorage.setItem("user", JSON.stringify(user));
+            this.user = JSON.stringify(user);
+        },
+        setToken(token) {
+            localStorage.setItem("token", token);
+            this.token = token;
+        },
+        deleteToken() {
+            localStorage.removeItem('token');
+            this.token = null;
+        },
+        deleteUser() {
+            localStorage.removeItem('user');
+            this.user = null;
+        },
+
+        localStorageExpires() {
+            var toRemove = [],                      // Itens para serem removidos
+                currentDate = new Date().getTime(); // Data atual em milissegundos
+            for (var i = 0, j = localStorage.length; i < j; i++) {
+                var key = localStorage.key(i),
+                    value = localStorage.getItem(key);
+                // Verifica se o formato do item para evitar conflitar com outras aplicações
+                if (value && value[0] === "{" && value.slice(-1) === "}") {
+                    // Decodifica de volta para JSON
+                    var current = JSON.parse(value);
+                    // Checa a chave expires do item especifico se for mais antigo que a data atual ele salva no array
+                    if (current.expires && current.expires <= currentDate) {
+                        toRemove.push(key);
+                    }
+                }
+            }
+
+            // Remove itens que já passaram do tempo
+            // Se remover no primeiro loop isto poderia afetar a ordem,
+            // pois quando se remove um item geralmente o objeto ou array são reordenados
+            for (var k = toRemove.length - 1; k >= 0; k--) {
+                localStorage.removeItem(toRemove[k]);
+            }
+        },
+        /**
+         * Função para adicionar itens no localStorage
+         * @param {string} chave Chave que será usada para obter o valor posteriormente
+         * @param {*} valor Quase qualquer tipo de valor pode ser adicionado, desde que não falhe no JSON.stringify
+         * @param {number} Tempo de vida em minutos do item
+         */
+        setLocalStorage(chave, valor, minutos) {
+            var expirarem = new Date().getTime() + (60000 * minutos);
+            localStorage.setItem(chave, JSON.stringify({
+                "value": valor,
+                "expires": expirarem
+            }));
+        },
+        /**
+         * Função para obter itens do localStorage que ainda não expiraram
+         * @param {string} chave Chave para obter o valor associado
+         * @return {*} Retorna qualquer valor, se o item tiver expirado irá retorna undefined
+         */
+        getLocalStorage(chave) {
+            this.localStorageExpires();//Limpa itens
+
+            var value = localStorage.getItem(chave);
+
+            if (value && value[0] === "{" && value.slice(-1) === "}") {
+
+                // Decodifica de volta para JSON
+                var current = JSON.parse(value);
+
+                return current.value;
+            }
+        }
+    },
+    getters: {
+        photo: (state) => state.user == null ? "https://cdn-fcimn.nitrocdn.com/IzrrzViOEVlJFLrcqznvLEumnJcrtGZB/assets/static/optimized/rev-dcdd57f/wp-content/uploads/2022/03/imagem_login.png" : `https://ui-avatars.com/api/?background=134355&color=fff&name=${JSON.parse(state.user).name}`
+    }
+
+
+});
